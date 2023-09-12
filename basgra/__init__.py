@@ -1,1 +1,1 @@
-import bglib as bg
+import bglib as bglib
