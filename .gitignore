@@ -2,3 +2,8 @@
 build/**
 *.code-workspace
 *.pyc
+extras/png/**
+.DS_Store
+*.pdf
+*.mod
+*.o

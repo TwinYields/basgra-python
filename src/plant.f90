@@ -40,6 +40,12 @@ Subroutine Harvest(CLV,CRES,CST,year,doy,DAYS_HARVEST,LAI,PHEN,TILG1,TILG2,TILV,
   else
     HARVFR = 1.0 - CLAI/LAI
   end if
+
+  !if (HARV == 1) then
+  !  print *, "TILV TILG1 TILG2", TILV, TILG1, TILG2
+  !  print *, "LAI, CLAI, FRACTV", LAI, CLAI, FRACTV
+  !end if
+
   HARVLA    = (HARV   * LAI * HARVFR) / DELT
   HARVLV    = (HARV   * CLV * HARVFR) / DELT
   HARVPH    = (HARV   * PHEN        ) / DELT
