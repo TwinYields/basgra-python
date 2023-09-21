@@ -7,3 +7,5 @@ extras/png/**
 *.pdf
 *.mod
 *.o
+*.so
+*.whl
