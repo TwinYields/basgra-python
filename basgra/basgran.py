@@ -5,6 +5,7 @@ import re
 import copy
 from pathlib import Path
 import os
+import datetime
 
 bg = basgra.bglib
 bglib = bg.bglib
@@ -118,7 +119,6 @@ class BasgraN(object):
         bglib.step()
 
     def doy_to_date(self, years, doys):
-        import datetime
         years = pd.DatetimeIndex([datetime.date(y, 1,1) for y in years])
         days = pd.to_timedelta(doys -1, unit="days")
         return years + days
@@ -128,7 +128,9 @@ class BasgraN(object):
         self.init()
 
         for i in range(self.Ndays):
-            d = dict(dm  = float(bg.bglib.dm),
+            bglib.step()
+            d = dict(dm  = float(bglib.dm),
+                     dmstub = float(bglib.dmstub),
                     davtmp = bg.environment.davtmp,
                     lai = float(bglib.lai),
                     lt50 = bglib.lt50,
@@ -143,7 +145,6 @@ class BasgraN(object):
                     yield_last = bglib.yield_last
                     )
             out.append(copy.deepcopy(d))
-            bglib.step()
         df = pd.DataFrame(out)
         df.insert(0, "date", self.doy_to_date(df["year"], df["doy"]))
         self.results = df
