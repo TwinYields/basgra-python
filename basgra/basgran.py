@@ -15,13 +15,15 @@ plant = bg.plant
 
 class BasgraN(object):
 
-    def __init__(self):
+    def __init__(self,
+                 params_file: str = None,
+                 parcol:     int = 13):
         self.startdate = None
         self.enddate = None
         self.weatherfile = None
         self.weather = None
         self.site = None
-        self.set_params()
+        self.set_params(parcol, params_file)
         self.set_ndep()
         self.Ndays = 0
 
@@ -32,9 +34,10 @@ class BasgraN(object):
         bglib.days_fert = calendar_fert[:, 0:2]
         bglib.nfertv = calendar_fert[:, 2] * bg.parameters_site.nfertmult
 
-    def set_params(self, parcol=13):
-        df_params = pd.read_table(os.path.dirname(
-            __file__) + "/data/parameters.txt")
+    def set_params(self, parcol=13, params_file=None):
+        if params_file is None:
+            params_file = os.path.dirname(__file__) + "/data/parameters.txt"
+        df_params = pd.read_table(params_file)
         params = df_params.iloc[:, parcol].to_numpy()
         site = df_params.columns[parcol]
         self.site = site.replace("/", "_")
@@ -78,14 +81,15 @@ class BasgraN(object):
         bge.yeari = wdf["year"]
         bge.doyi = wdf["day"]
         bge.gri = wdf["radn"]
-        bge.tmmni = wdf["T"]
-        bge.tmmxi = wdf["T"]
-        # bge.tmmni = wdf["mint"]
-        # bge.tmmxi = wdf["maxt"]
+        # bge.tmmni = wdf["T"]
+        # bge.tmmxi = wdf["T"]
+        bge.tmmni = wdf["mint"]
+        bge.tmmxi = wdf["maxt"]
 
-        bge.vpi = np.exp(17.27*wdf["T"]/(wdf["T"]+239)) * 0.6108 * wdf.rh / 100
+        bge.vpi = np.exp(
+            17.27*wdf["T"]/(wdf["T"]+239)) * 0.6108 * wdf.rh / 100
         bge.raini = wdf["rain"]
-        bge.wni = wdf["windspeed"]
+        bge.wni = wdf["wind_speed"]
 
     # TODO set simulation dates, now uses full weatherfile
     def set_dates(self, startdate, enddate):
