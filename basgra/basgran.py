@@ -12,15 +12,18 @@ bglib = bg.bglib
 bge = bg.environment
 plant = bg.plant
 
+
 class BasgraN(object):
 
-    def __init__(self):
+    def __init__(self,
+                 params_file: str = None,
+                 parcol:     int = 13):
         self.startdate = None
         self.enddate = None
         self.weatherfile = None
         self.weather = None
         self.site = None
-        self.set_params()
+        self.set_params(parcol, params_file)
         self.set_ndep()
         self.Ndays = 0
 
@@ -28,15 +31,17 @@ class BasgraN(object):
         days_harvest = np.full((100, 2), -1, dtype=int)
         bg.bglib.days_harvest = days_harvest.astype(int)
         calendar_fert = np.zeros((100, 3))
-        bglib.days_fert = calendar_fert[:,0:2]
-        bglib.nfertv = calendar_fert[:,2] * bg.parameters_site.nfertmult
+        bglib.days_fert = calendar_fert[:, 0:2]
+        bglib.nfertv = calendar_fert[:, 2] * bg.parameters_site.nfertmult
 
-    def set_params(self, parcol = 13):
-        df_params = pd.read_table(os.path.dirname(__file__) + "/data/parameters.txt")
+    def set_params(self, parcol=13, params_file=None):
+        if params_file is None:
+            params_file = os.path.dirname(__file__) + "/data/parameters.txt"
+        df_params = pd.read_table(params_file)
         params = df_params.iloc[:, parcol].to_numpy()
         site = df_params.columns[parcol]
-        self.site = site.replace("/","_")
-        p = np.zeros(120) #params dim must be 120
+        self.site = site.replace("/", "_")
+        p = np.zeros(120)  # params dim must be 120
         p[:len(params)] = params
         bg.set_params(p)
 
@@ -45,10 +50,13 @@ class BasgraN(object):
         calendar_Ndep = np.zeros((100, 3))
         calendar_Ndep[0, :] = [1900, 1, 0]
         calendar_Ndep[1, :] = [2100, 366, 0]
-        calendar_Ndep[0, :] = [1900, 1, 2 * 1000 / (10000 * 365)]  # 2 kg N ha-1 y-1 N-deposition in 1900
-        calendar_Ndep[1, :] = [1980, 366, 20 * 1000 / (10000 * 365)]  # 20 kg N ha-1 y-1 N-deposition in 1980
-        calendar_Ndep[2, :] = [2100, 366, 20 * 1000 / (10000 * 365)]  # 20 kg N ha-1 y-1 N-deposition in 2100
-        bglib.days_ndep = calendar_Ndep[:,0:2]
+        # 2 kg N ha-1 y-1 N-deposition in 1900
+        calendar_Ndep[0, :] = [1900, 1, 2 * 1000 / (10000 * 365)]
+        # 20 kg N ha-1 y-1 N-deposition in 1980
+        calendar_Ndep[1, :] = [1980, 366, 20 * 1000 / (10000 * 365)]
+        # 20 kg N ha-1 y-1 N-deposition in 2100
+        calendar_Ndep[2, :] = [2100, 366, 20 * 1000 / (10000 * 365)]
+        bglib.days_ndep = calendar_Ndep[:, 0:2]
         bglib.ndepv = calendar_Ndep[:, 2]
 
     def set_weather(self, weatherfile):
@@ -59,7 +67,7 @@ class BasgraN(object):
             st = pd.Timestamp(self.startdate)
             et = pd.Timestamp(self.enddate)
             wdf = wdf.query(f"year >= {st.year} and day >= {st.day_of_year}"
-                    ).query(f"year <= {et.year} and day <= {et.day_of_year}")
+                            ).query(f"year <= {et.year} and day <= {et.day_of_year}")
 
         self.weatherfile = weatherfile
         self.weather = wdf.copy()
@@ -68,19 +76,20 @@ class BasgraN(object):
         self.Ndays = wdf.shape[0]
         npad = bge.nmaxdays - wdf.shape[0]
         padded = np.pad(wdf.to_numpy(), [(0, npad), (0, 0)])
-        wdf = pd.DataFrame(padded, columns = wdf.columns)
+        wdf = pd.DataFrame(padded, columns=wdf.columns)
 
         bge.yeari = wdf["year"]
         bge.doyi = wdf["day"]
         bge.gri = wdf["radn"]
-        bge.tmmni = wdf["T"]
-        bge.tmmxi = wdf["T"]
-        #bge.tmmni = wdf["mint"]
-        #bge.tmmxi = wdf["maxt"]
+        # bge.tmmni = wdf["T"]
+        # bge.tmmxi = wdf["T"]
+        bge.tmmni = wdf["mint"]
+        bge.tmmxi = wdf["maxt"]
 
-        bge.vpi = np.exp(17.27*wdf["T"]/(wdf["T"]+239)) * 0.6108 * wdf.rh / 100
+        bge.vpi = np.exp(
+            17.27*wdf["T"]/(wdf["T"]+239)) * 0.6108 * wdf.rh / 100
         bge.raini = wdf["rain"]
-        bge.wni = wdf["windspeed"]
+        bge.wni = wdf["wind_speed"]
 
     # TODO set simulation dates, now uses full weatherfile
     def set_dates(self, startdate, enddate):
@@ -100,7 +109,7 @@ class BasgraN(object):
 
     def set_N(self, Ndata):
         ndf = pd.DataFrame(Ndata, columns=["date", "N"])
-        ndf["N"] = ndf["N"]/10. # Give input in kg/ha, scale for model
+        ndf["N"] = ndf["N"]/10.  # Give input in kg/ha, scale for model
         ndf["date"] = pd.DatetimeIndex(ndf["date"])
         ndf = ndf.sort_values("date")
         calendar_fert = np.zeros((100, 3))
@@ -108,9 +117,9 @@ class BasgraN(object):
         for d in ndf["date"]:
             calendar_fert[idx, :] = [d.year, d.day_of_year, ndf["N"].iloc[idx]]
             idx += 1
-        #calendar_fert
-        bglib.days_fert = calendar_fert[:,0:2]
-        bglib.nfertv = calendar_fert[:,2] * bg.parameters_site.nfertmult
+        # calendar_fert
+        bglib.days_fert = calendar_fert[:, 0:2]
+        bglib.nfertv = calendar_fert[:, 2] * bg.parameters_site.nfertmult
 
     def init(self):
         bglib.init()
@@ -119,8 +128,8 @@ class BasgraN(object):
         bglib.step()
 
     def doy_to_date(self, years, doys):
-        years = pd.DatetimeIndex([datetime.date(y, 1,1) for y in years])
-        days = pd.to_timedelta(doys -1, unit="days")
+        years = pd.DatetimeIndex([datetime.date(y, 1, 1) for y in years])
+        days = pd.to_timedelta(doys - 1, unit="days")
         return years + days
 
     def run(self):
@@ -129,21 +138,21 @@ class BasgraN(object):
 
         for i in range(self.Ndays):
             bglib.step()
-            d = dict(dm  = float(bglib.dm),
-                     dmstub = float(bglib.dmstub),
-                    davtmp = bg.environment.davtmp,
-                    lai = float(bglib.lai),
-                    lt50 = bglib.lt50,
-                    year = int(bglib.year),
-                    day = int(bglib.day),
-                    dayl = bge.dayl,
-                    doy = int(bglib.doy),
-                    crt = bglib.crt,
-                    nrt = bglib.nrt,
-                    nsh = bglib.nsh,
-                    nshnor = plant.nshnor,
-                    yield_last = bglib.yield_last
-                    )
+            d = dict(dm=float(bglib.dm),
+                     dmstub=float(bglib.dmstub),
+                     davtmp=bg.environment.davtmp,
+                     lai=float(bglib.lai),
+                     lt50=bglib.lt50,
+                     year=int(bglib.year),
+                     day=int(bglib.day),
+                     dayl=bge.dayl,
+                     doy=int(bglib.doy),
+                     crt=bglib.crt,
+                     nrt=bglib.nrt,
+                     nsh=bglib.nsh,
+                     nshnor=plant.nshnor,
+                     yield_last=bglib.yield_last
+                     )
             out.append(copy.deepcopy(d))
         df = pd.DataFrame(out)
         df.insert(0, "date", self.doy_to_date(df["year"], df["doy"]))

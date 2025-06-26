@@ -9,3 +9,4 @@ extras/png/**
 *.o
 *.so
 *.whl
+dist/
